@@ -1,0 +1,24 @@
+{
+  "// lib": "DOM is in lib because the service is written against the DOM typing of fetch, where Response.json() is any; node's own typing makes it unknown and the check fails in two places that are fine at runtime.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src",
+    "test"
+  ]
+}

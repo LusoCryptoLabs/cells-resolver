@@ -1,0 +1,23 @@
+{
+  "name": "cells-resolver",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Read API for Cells: keeps an in-memory snapshot of live names and serves fast resolve/reverse over HTTP, on cellula-sdk",
+  "scripts": {
+    "start": "node src/server.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ckb-ccc/core": "1.19.1",
+    "@noble/post-quantum": "^0.7.1",
+    "@scure/bip39": "^2.4.0",
+    "cellula-sdk": "0.1.7",
+    "ckbfs-reader": "0.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "typescript": "^5.9.3"
+  }
+}

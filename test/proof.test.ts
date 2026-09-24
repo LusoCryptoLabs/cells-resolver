@@ -27,6 +27,8 @@ interface Proof {
   outPoint: { txHash: string; index: number }
   type: { codeHash: string; hashType: string; args: string }
   dataHash: string
+  blockNumber: number | null
+  blockHash: string | null
   network: string
   how: string
 }
@@ -37,8 +39,15 @@ function check(p: Proof, data: string) {
   assert.match(p.type.codeHash, /^0x[0-9a-f]{64}$/, 'the type script must be complete')
   assert.ok(p.type.args && p.type.args !== '0x', 'including its args, which are the namespace')
   assert.equal(p.dataHash, ccc.hashCkb(data), 'dataHash must be the hash of the data this answer decoded')
+  // A live cell was committed somewhere. A light client that cannot look a cell up by
+  // outpoint fetches the transaction and watches from this block; null would send it to
+  // genesis, which is the scan the field exists to spare it.
+  assert.ok(Number.isInteger(p.blockNumber) && (p.blockNumber as number) > 0, 'the block that committed the cell must be named')
+  assert.match(p.blockHash ?? '', /^0x[0-9a-f]{64}$/, 'and its hash, so the number cannot be argued with')
   assert.ok(p.how.length > 40, 'and it must say what to do with all this')
 }
+
+const committed = { blockNumber: 20_542_094, blockHash: `0x${'4'.repeat(64)}` }
 
 test('a proof carries everything a stranger needs and nothing they must trust', () => {
   const data = '0x03' + 'ab'.repeat(120)
@@ -46,6 +55,7 @@ test('a proof carries everything a stranger needs and nothing they must trust', 
     outPoint: { txHash: `0x${'1'.repeat(64)}`, index: 0 },
     type: { codeHash: `0x${'2'.repeat(64)}`, hashType: 'type', args: `0x${'3'.repeat(40)}` },
     dataHash: ccc.hashCkb(data),
+    ...committed,
     network: 'testnet',
     how: 'get_live_cell(outPoint, true) on any CKB node: the cell must be live, its type must be this one, and blake2b(its data) must be dataHash.',
   }
@@ -60,6 +70,7 @@ test('a proof of the wrong data is caught', () => {
     outPoint: { txHash: `0x${'1'.repeat(64)}`, index: 0 },
     type: { codeHash: `0x${'2'.repeat(64)}`, hashType: 'type', args: `0x${'3'.repeat(40)}` },
     dataHash: ccc.hashCkb('0x04' + 'cd'.repeat(120)), // a different cell entirely
+    ...committed,
     network: 'testnet',
     how: 'get_live_cell(outPoint, true) on any CKB node, and compare.',
   }
@@ -74,8 +85,25 @@ test('the type script is carried whole, because the namespace is part of the ide
     outPoint: { txHash: `0x${'1'.repeat(64)}`, index: 0 },
     type: { codeHash: `0x${'2'.repeat(64)}`, hashType: 'type', args: '0x' },
     dataHash: ccc.hashCkb('0x00'),
+    ...committed,
     network: 'testnet',
     how: 'get_live_cell(outPoint, true) on any CKB node, and compare it against this type script.',
   }
   assert.throws(() => check(p, '0x00'), /args, which are the namespace/)
+})
+
+test('a proof that does not say which block committed the cell is caught', () => {
+  // The control for the block fields: a light client handed null here would scan from
+  // genesis, so the shape must refuse it rather than pass it along.
+  const data = '0x03' + 'ab'.repeat(120)
+  const p: Proof = {
+    outPoint: { txHash: `0x${'1'.repeat(64)}`, index: 0 },
+    type: { codeHash: `0x${'2'.repeat(64)}`, hashType: 'type', args: `0x${'3'.repeat(40)}` },
+    dataHash: ccc.hashCkb(data),
+    blockNumber: null,
+    blockHash: null,
+    network: 'testnet',
+    how: 'get_live_cell(outPoint, true) on any CKB node, and compare it against this type script.',
+  }
+  assert.throws(() => check(p, data), /block that committed the cell/)
 })

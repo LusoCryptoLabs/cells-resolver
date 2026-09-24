@@ -142,7 +142,27 @@ export function openapiSpec(origin: string, network: string) {
                 records: { type: 'array', items: RECORD },
                 proof: {
                   type: 'object',
-                  description: 'Where this answer came from on chain, so it can be checked against any CKB node: the outpoint, the full type script and the data hash.',
+                  description:
+                    'Where this answer came from on chain, so it can be checked against any CKB node: the outpoint, the full type script, the data hash, and the block that committed the cell.',
+                  properties: {
+                    outPoint: {
+                      type: 'object',
+                      properties: { txHash: { type: 'string' }, index: { type: 'integer' } },
+                    },
+                    type: {
+                      type: 'object',
+                      description: 'The whole type script. Its args are the namespace, and the right code in the wrong namespace is a different protocol.',
+                      properties: { codeHash: { type: 'string' }, hashType: { type: 'string' }, args: { type: 'string' } },
+                    },
+                    dataHash: { type: 'string', description: 'blake2b of the cell data this answer decoded.' },
+                    blockNumber: {
+                      type: ['integer', 'null'],
+                      description: 'The block that committed the transaction behind outPoint. A light client can fetch the transaction by hash and watch for the cell being spent from here, instead of scanning from genesis.',
+                    },
+                    blockHash: { type: ['string', 'null'], description: 'The hash of that block.' },
+                    network: { type: 'string' },
+                    how: { type: 'string', description: 'What to do with all of this, in one sentence.' },
+                  },
                 },
                 domain: {
                   type: ['object', 'null'],

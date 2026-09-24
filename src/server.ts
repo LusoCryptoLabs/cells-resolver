@@ -399,6 +399,11 @@ function safeText(hex: string): string {
  * With the outpoint and the type script, one `get_live_cell` against any public node
  * settles it: the cell is live, its type is the published namespace, and its data decodes
  * to the addresses above. `dataHash` lets a caller compare without decoding anything.
+ *
+ * The block is for a light client. One that only watches scripts cannot look a cell up
+ * by outpoint, but it can fetch the transaction by hash and then watch from that block
+ * for the cell being spent; without the number it would scan from genesis. Asked for by
+ * Pocket Node (RaheemJnr/pocket-node#530), 2026-09-23.
  */
 function proofFor(a: LiveAccount) {
   return {
@@ -407,8 +412,10 @@ function proofFor(a: LiveAccount) {
     // cell of the right code in the wrong namespace is a different protocol.
     type: cells.accountType(),
     dataHash: ccc.hashCkb(a.data),
+    blockNumber: a.blockNumber ?? null,
+    blockHash: a.blockHash ?? null,
     network: CKB_NETWORK,
-    how: 'get_live_cell(outPoint, true) on any CKB node: the cell must be live, its type must be this one, and blake2b(its data) must be dataHash. Then decode the data yourself, or fetch its witness by the transaction and hash it against the witness_hash inside.',
+    how: 'get_live_cell(outPoint, true) on any CKB node: the cell must be live, its type must be this one, and blake2b(its data) must be dataHash. Then decode the data yourself, or fetch its witness by the transaction and hash it against the witness_hash inside. blockNumber and blockHash are where that transaction was committed, so a light client can fetch it by hash and watch for the cell being spent from that block on.',
   }
 }
 

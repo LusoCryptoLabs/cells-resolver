@@ -104,6 +104,7 @@ The ones most integrations use:
 | `GET /profile/:name` | display name, bio, links |
 | `GET /name/:name` | the raw record set |
 | `GET /latest`, `GET /names`, `GET /expiring`, `GET /market` | lists |
+| `GET /directory?q=&sale=&pay=&page=1&size=10` | the names a page at a time in label order, searched and filtered, each row with the outpoint it was read at |
 | `GET /price` | the current registration price factor, from the price cell |
 | `GET /verify` | are the running contracts the published, reproducible source |
 | `GET /health` | snapshot age, network, price cell, the lock and wallet watches |

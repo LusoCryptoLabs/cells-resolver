@@ -503,6 +503,57 @@ export function openapiSpec(origin: string, network: string) {
           },
         },
       },
+      '/directory': {
+        get: {
+          tags: ['names'],
+          operationId: 'directory',
+          summary: 'The names a page at a time, searched and filtered here.',
+          description:
+            'Every live name in label order, from the snapshot this service refreshes every few seconds, so a list of thousands costs one call instead of a round trip per name. Withdrawn names are left out. `exists` says whether a name spelled exactly like `q` exists on the chain, served here or not, because a withdrawn name is not free. Each row carries the outpoint it was read at. Returns 503 until the first snapshot has been taken.',
+          parameters: [
+            { name: 'q', in: 'query', required: false, schema: { type: 'string' }, description: 'Part of a label; `.cell` and case are ignored.' },
+            { name: 'sale', in: 'query', required: false, schema: { type: 'boolean', default: false }, description: 'Only names listed for sale (`1` or `true`).' },
+            { name: 'pay', in: 'query', required: false, schema: { type: 'string', enum: ['ckb', 'lightning', 'fiber', 'btc', 'eth'] }, description: 'Only names that publish a way to be paid by this.' },
+            { name: 'page', in: 'query', required: false, schema: { type: 'integer', default: 1, minimum: 1 } },
+            { name: 'size', in: 'query', required: false, schema: { type: 'integer', default: 10, minimum: 1, maximum: 50 } },
+          ],
+          responses: {
+            200: ok({
+              type: 'object',
+              properties: {
+                ready: { type: 'boolean' },
+                asOf: { type: 'string', format: 'date-time', description: 'When the snapshot was taken.' },
+                listingsRead: { type: 'boolean', description: 'False until the sale listings have been scanned; the sale filter means nothing before.' },
+                total: { type: 'integer', description: 'Names served.' },
+                count: { type: 'integer', description: 'Names matching the query.' },
+                page: { type: 'integer' },
+                size: { type: 'integer' },
+                pages: { type: 'integer' },
+                exists: { type: 'boolean' },
+                rows: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      label: { type: 'string' },
+                      id: { type: 'string' },
+                      expiresAt: { type: 'string', format: 'date-time' },
+                      details: { type: 'integer', description: 'How many records the name publishes.' },
+                      methods: { type: 'array', items: { type: 'string', enum: ['ckb', 'lightning', 'fiber', 'btc', 'eth'] } },
+                      saleCkb: { type: ['number', 'null'] },
+                      avatar: { type: 'boolean', description: 'Publishes a picture, served at /avatar/{name}.' },
+                      accent: { type: ['string', 'null'] },
+                      outPoint: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            }),
+            503: { description: 'The first snapshot has not been taken yet.' },
+          },
+        },
+      },
       '/expiring': {
         get: {
           tags: ['names'],

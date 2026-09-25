@@ -29,6 +29,7 @@ import { Archive } from './archive.ts'
 import { cardHtml, siteCardHtml } from './card.ts'
 import { Disputes, parseReport, withdrawnBody } from './disputes.ts'
 import { marketRows } from './market.ts'
+import { directoryPage } from './directory.ts'
 import { Quantum } from './quantum.ts'
 import { DomainProofs, cleanDomain } from './domainproof.ts'
 import { SealedStore } from './sealed.ts'
@@ -473,6 +474,7 @@ const INFO = {
     'GET /archive/:name': "the record set we kept a copy of, so anyone holding it can publish it again; checked against the chain's own commitment, never trusted",
     'GET /latest?limit=20': 'the most recently registered names, newest first, with when each one was registered',
     'GET /names': 'every registered name',
+    'GET /directory?q=&sale=&pay=&page=1&size=10': 'the names a page at a time, searched and filtered here, in label order, with what a list shows of each. Withdrawn names are left out',
     'GET /expiring?days=30&state=all&format=json':
       'names running out: expiring, in grace (lapsed, but for thirty days more nobody else may take them), and free to register now. state filters to one of those; format=rss gives a feed',
     'GET /health': 'snapshot freshness',
@@ -980,6 +982,34 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       if (sub && sub !== 'www') return redirect(res, `${APP_URL}/${label(sub)}.cell`)
       if (seg.length === 0) return redirect(res, APP_URL)
       if (seg.length === 1 && !['health', 'names', 'verify'].includes(seg[0])) return redirect(res, `${APP_URL}/${label(seg[0])}.cell`)
+    }
+
+    // The directory a page at a time, from the snapshot this service already holds: reading
+    // every name's records off a node is a round trip per name, which at thousands of names
+    // is minutes. Not ready is a 503, never an empty page, so a client falls back to the
+    // chain rather than printing "no names".
+    if (seg.length === 1 && seg[0] === 'directory') {
+      if (!lastRefresh) return send(res, 503, { ready: false, note: 'the names have not been read yet; try again in a moment' })
+      const page = directoryPage(
+        snapshot,
+        offers,
+        {
+          q: url.searchParams.get('q') ?? '',
+          sale: url.searchParams.get('sale') === '1' || url.searchParams.get('sale') === 'true',
+          pay: url.searchParams.get('pay') ?? '',
+          page: Number(url.searchParams.get('page') ?? 1),
+          size: Number(url.searchParams.get('size') ?? 10),
+        },
+        { withdrawn: (l) => disputes.withdrawn(l) },
+      )
+      return send(res, 200, {
+        ready: true,
+        asOf: new Date(lastRefresh).toISOString(),
+        // The listings are scanned apart from the names; before the first scan the sale
+        // filter would say "none", so it says it has not read them instead.
+        listingsRead: offersAt > 0,
+        ...page,
+      })
     }
 
     // The feed: what was registered lately. Served from the history scan rather than

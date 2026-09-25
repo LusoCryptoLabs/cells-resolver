@@ -64,8 +64,10 @@ Everything is an environment variable, all optional:
 | `CKB_NETWORK` | `testnet` | `mainnet` or `testnet`; picks the node, the namespace and the label |
 | `CKB_RPC` | the public node for that network | a JSON-RPC endpoint, yours if you have one |
 | `PORT` | `8787` | |
-| `REFRESH_MS` | `15000` | how often the snapshot is rebuilt |
+| `REFRESH_MS` | `15000` | how often the names are brought up to date, reading only the blocks since the last read |
 | `REFRESH_TIMEOUT_MS` | `30000` | give up on a refresh that hangs |
+| `RECONCILE_MS` | `600000` | how often every name is read again in full, as a check on the reads between; `/health` reports what it found under `refresh.drift` |
+| `FULL_TIMEOUT_MS` | `300000` | give up on a full read that hangs |
 | `RATE_MAX` | `120` | requests per window per address |
 | `RATE_WINDOW_MS` | `60000` | |
 | `PRIMARY_TTL_MS` | `60000` | how long a reverse lookup is cached |

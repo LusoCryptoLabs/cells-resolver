@@ -30,6 +30,7 @@ import { cardHtml, siteCardHtml } from './card.ts'
 import { Disputes, parseReport, withdrawnBody } from './disputes.ts'
 import { marketRows } from './market.ts'
 import { directoryPage } from './directory.ts'
+import { LiveNames, nameChain } from './livenames.ts'
 import { Quantum } from './quantum.ts'
 import { DomainProofs, cleanDomain } from './domainproof.ts'
 import { SealedStore } from './sealed.ts'
@@ -43,6 +44,11 @@ import { Counts } from './counts.ts'
 const PORT = Number(process.env.PORT ?? 8787)
 const REFRESH_MS = Number(process.env.REFRESH_MS ?? 15_000)
 const REFRESH_TIMEOUT_MS = Number(process.env.REFRESH_TIMEOUT_MS ?? 30_000)
+// Every name is read in full at the start and then this often, as a truth pass over the
+// incremental reads in between (livenames.ts). A full read of a large namespace is many
+// pages, so it gets its own, longer time box.
+const RECONCILE_MS = Number(process.env.RECONCILE_MS ?? 600_000)
+const FULL_TIMEOUT_MS = Number(process.env.FULL_TIMEOUT_MS ?? 300_000)
 const RATE_MAX = Number(process.env.RATE_MAX ?? 120) // requests per window per IP
 const RATE_WINDOW_MS = Number(process.env.RATE_WINDOW_MS ?? 60_000)
 const PRIMARY_TTL_MS = Number(process.env.PRIMARY_TTL_MS ?? 60_000)
@@ -310,26 +316,36 @@ let offers = new Map<string, SaleOffer>()
 let offersAt = 0
 let lastRefresh = 0
 let refreshing = false
+const liveNames = new LiveNames(nameChain(cells))
 
 async function refresh(): Promise<void> {
   if (refreshing) return
   refreshing = true
   try {
-    // Time-box the scan: a hung RPC must not leave `refreshing` stuck true, which would
-    // stop every future refresh. The old snapshot keeps serving until the next tick.
-    const next = await Promise.race([
-      cells.list(),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('refresh timed out')), REFRESH_TIMEOUT_MS)),
+    // Only the blocks since the last read, and every name on a slow clock (livenames.ts).
+    // Until 2026-09-25 this read every name on every tick. Time-boxed: a hung RPC must not
+    // leave `refreshing` stuck true, which would stop every future refresh; the old
+    // snapshot keeps serving until the next tick, and a read that is still running is
+    // waited for rather than started again.
+    const whole = !liveNames.ready || Date.now() - liveNames.fullAt > RECONCILE_MS
+    await Promise.race([
+      whole ? liveNames.full() : liveNames.tick(),
+      new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error('refresh timed out')), whole ? FULL_TIMEOUT_MS : REFRESH_TIMEOUT_MS),
+      ),
     ])
-    snapshot = next
-    // A name withdrawn as illegal content is neither archived nor re-archived, and
-    // neither are those exact bytes under any other name: the claim is that they may
-    // not be held, which a copycat registration would otherwise walk straight past.
-    const purgedBytes = new Set(next.filter((a) => disputes.purged(a.label)).map((a) => a.witnessHash))
-    archive.absorb(next, (a) => disputes.purged(a.label) || purgedBytes.has(a.witnessHash))
+    const next = liveNames.snapshot()
+    if (next !== snapshot) {
+      snapshot = next
+      // A name withdrawn as illegal content is neither archived nor re-archived, and
+      // neither are those exact bytes under any other name: the claim is that they may
+      // not be held, which a copycat registration would otherwise walk straight past.
+      const purgedBytes = new Set(next.filter((a) => disputes.purged(a.label)).map((a) => a.witnessHash))
+      archive.absorb(next, (a) => disputes.purged(a.label) || purgedBytes.has(a.witnessHash))
+      byLabel = new Map(next.map((a) => [a.label, a]))
+    }
     for (const d of disputes.list()) if (d.status === 'withdrawn' && d.claim === 'illegal') archive.forget(d.name)
     priceInfo = await cells.priceCell().catch(() => null)
-    byLabel = new Map(next.map((a) => [a.label, a]))
     lastRefresh = Date.now()
     // Beside the snapshot, not inside it: a slow lock scan must never delay a name.
     // The sale-lock scan, on the same principle and its own clock.
@@ -360,7 +376,10 @@ async function refresh(): Promise<void> {
         }),
       )
       .catch((e) => console.error('[domain] sweep failed', String(e)))
-    console.log(`[gateway] refreshed: ${next.length} names`)
+    console.log(
+      `[gateway] refreshed: ${next.length} names to block ${liveNames.readTo}` +
+        (whole ? `, full read${liveNames.drift === null ? '' : `, ${liveNames.drift} the reads between had wrong`}` : ''),
+    )
   } catch (e) {
     console.error('[gateway] refresh failed:', String(e))
   } finally {
@@ -732,7 +751,7 @@ function route(pathname: string, coinType: string | null): { code: number; body:
   if (seg.length === 1 && seg[0] === 'health') {
     return {
       code: 200,
-      body: { ok: lastRefresh > 0, names: snapshot.length, lastRefresh, ageMs: lastRefresh ? Date.now() - lastRefresh : null, network: NETWORK_NAME, price: priceInfo ? { factorBps: priceInfo.factorBps, outPoint: `${priceInfo.outPoint.txHash}:${priceInfo.outPoint.index}` } : null, archive: archive.stats(), quantum: quantum.stats(), sealed: sealed.stats(), disputes: disputes.stats(), domain: domainProofs.stats(), lock: { ok: lockWatch.ok(), watching: lockWatch.list() }, wallet: { ok: walletWatch.ok(), watching: walletWatch.list() } },
+      body: { ok: lastRefresh > 0, names: snapshot.length, lastRefresh, ageMs: lastRefresh ? Date.now() - lastRefresh : null, network: NETWORK_NAME, price: priceInfo ? { factorBps: priceInfo.factorBps, outPoint: `${priceInfo.outPoint.txHash}:${priceInfo.outPoint.index}` } : null, archive: archive.stats(), quantum: quantum.stats(), sealed: sealed.stats(), disputes: disputes.stats(), domain: domainProofs.stats(), lock: { ok: lockWatch.ok(), watching: lockWatch.list() }, wallet: { ok: walletWatch.ok(), watching: walletWatch.list() }, refresh: { readTo: liveNames.ready ? liveNames.readTo : null, lastFull: liveNames.fullAt ? new Date(liveNames.fullAt).toISOString() : null, drift: liveNames.drift } },
     }
   }
   if (seg.length === 1 && seg[0] === 'names') {

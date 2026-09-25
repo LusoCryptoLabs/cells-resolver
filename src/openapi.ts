@@ -659,6 +659,11 @@ export function openapiSpec(origin: string, network: string) {
                 },
                 lock: { type: 'object', description: 'Whether the post-quantum lock code is still the code we recorded.' },
                 wallet: { type: 'object', description: 'The same watch over the wallet lock the app connects through.' },
+                refresh: {
+                  type: 'object',
+                  description:
+                    'The last block the names were read to, when every name was last read in full, and how many names the incremental reads before it had wrong (0 is the expected answer).',
+                },
               },
               required: ['ok', 'names', 'network'],
             }),

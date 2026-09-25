@@ -17,6 +17,8 @@ class FakeChain implements NameChain {
   tip = 0
   private n = 0
   live = new Map<string, Cell>()
+  /** The block every cell was created in, spent or not, as a hydrated account reports it. */
+  born = new Map<string, number>()
   spent: { block: number; key: string }[] = []
   /** Outpoints whose records never decode, and ones that fail this many more times. */
   broken = new Set<string>()
@@ -44,6 +46,7 @@ class FakeChain implements NameChain {
   register(label: string): Cell {
     const c = this.cell(label)
     this.live.set(outpointKey(c), c)
+    this.born.set(outpointKey(c), c.block)
     return c
   }
   edit(label: string): Cell {
@@ -91,7 +94,7 @@ class FakeChain implements NameChain {
         this.flaky.set(k, left - 1)
         continue
       }
-      out.push({ label: l.label, id: l.id, outPoint: l.outPoint, records: [] })
+      out.push({ label: l.label, id: l.id, outPoint: l.outPoint, records: [], blockNumber: this.born.get(k) })
     }
     return out as never
   }
@@ -228,6 +231,31 @@ test('a full read counts and repairs what the ticks got wrong', async () => {
   await names.full()
   assert.deepEqual(labelsOf(names), ['bob'])
   assert.equal(names.drift, 1)
+})
+
+test('what lands while a full read pages through is the chain moving, not drift', async () => {
+  const chain = new FakeChain()
+  chain.register('alice')
+  chain.register('bob')
+  const names = new LiveNames(chain)
+  await names.full()
+  const all = chain.all.bind(chain)
+  chain.all = async function* () {
+    // A registration and a removal in a new block, between two pages of the read.
+    let first = true
+    for await (const l of all()) {
+      yield l
+      if (first) {
+        first = false
+        chain.block()
+        chain.register('carol')
+        chain.recycle('bob')
+      }
+    }
+  }
+  await names.full()
+  assert.deepEqual(labelsOf(names), ['alice', 'carol'])
+  assert.equal(names.drift, 0)
 })
 
 test('what happens during a full read is read before it ends', async () => {

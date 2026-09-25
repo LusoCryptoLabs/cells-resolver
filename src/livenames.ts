@@ -120,6 +120,7 @@ export class LiveNames {
     // Bring the ticks' view up to now first, so what the full read finds different is
     // their error and not just what happened since the last tick.
     if (this.ready) await this.readNew()
+    const exactTo = this.readTo
     const tip = await this.chain.indexerTip()
     const kept = new Map<string, LiveAccount>()
     const missing: LiveAccountLite[] = []
@@ -132,10 +133,20 @@ export class LiveNames {
     }
     for (const a of await this.chain.hydrate(missing)) kept.set(outpointKey(a.outPoint), a)
 
-    let wrong = 0
-    for (const k of kept.keys()) if (!this.byOutpoint.has(k)) wrong++
-    for (const k of this.byOutpoint.keys()) if (!kept.has(k)) wrong++
-    this.drift = this.ready ? wrong : null
+    // What the ticks had wrong, and only that. A name created or spent while the pages
+    // were being read is the chain moving, not an error, and at a thousand names a day it
+    // would land inside a full read often enough to raise false alarms (the sentinela
+    // emails when this is not 0). So a cell counts only if its block is one the ticks had
+    // already read up to.
+    if (this.ready) {
+      const now = await this.chain.indexerTip()
+      const spentSince = new Set<string>()
+      if (now > exactTo) for await (const k of this.chain.spentIn(exactTo + 1, now + 1)) spentSince.add(k)
+      let wrong = 0
+      for (const [k, a] of kept) if (!this.byOutpoint.has(k) && !((a.blockNumber ?? 0) > exactTo)) wrong++
+      for (const k of this.byOutpoint.keys()) if (!kept.has(k) && !spentSince.has(k)) wrong++
+      this.drift = wrong
+    }
 
     this.byOutpoint = new Map()
     this.byId = new Map()

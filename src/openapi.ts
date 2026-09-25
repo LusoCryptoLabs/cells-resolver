@@ -662,7 +662,7 @@ export function openapiSpec(origin: string, network: string) {
                 refresh: {
                   type: 'object',
                   description:
-                    'The last block the names were read to, when every name was last read in full, and how many names the incremental reads before it had wrong (0 is the expected answer).',
+                    'ok is false when the names have not been brought up to date for five minutes, or the last full read found names the incremental reads had wrong. Beside it: the last block read to, when every name was last read in full, and how many names the reads before it had wrong (0 is the expected answer).',
                 },
               },
               required: ['ok', 'names', 'network'],

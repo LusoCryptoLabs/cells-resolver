@@ -49,6 +49,11 @@ const REFRESH_TIMEOUT_MS = Number(process.env.REFRESH_TIMEOUT_MS ?? 30_000)
 // pages, so it gets its own, longer time box.
 const RECONCILE_MS = Number(process.env.RECONCILE_MS ?? 600_000)
 const FULL_TIMEOUT_MS = Number(process.env.FULL_TIMEOUT_MS ?? 300_000)
+// Names not brought up to date for this long are stale, and `refresh.ok` in /health turns
+// false, which the sentinela watches and emails about. Counted from the start too, so a
+// service that never managed a first read is not reported healthy.
+const STALE_MS = Number(process.env.STALE_MS ?? 300_000)
+const startedAt = Date.now()
 const RATE_MAX = Number(process.env.RATE_MAX ?? 120) // requests per window per IP
 const RATE_WINDOW_MS = Number(process.env.RATE_WINDOW_MS ?? 60_000)
 const PRIMARY_TTL_MS = Number(process.env.PRIMARY_TTL_MS ?? 60_000)
@@ -317,6 +322,11 @@ let offersAt = 0
 let lastRefresh = 0
 let refreshing = false
 const liveNames = new LiveNames(nameChain(cells))
+
+/** Whether the names are being kept up to date: a refresh within STALE_MS, and the last full read found nothing wrong. */
+function refreshOk(): boolean {
+  return Date.now() - (lastRefresh || startedAt) < STALE_MS && (liveNames.drift ?? 0) === 0
+}
 
 async function refresh(): Promise<void> {
   if (refreshing) return
@@ -751,7 +761,7 @@ function route(pathname: string, coinType: string | null): { code: number; body:
   if (seg.length === 1 && seg[0] === 'health') {
     return {
       code: 200,
-      body: { ok: lastRefresh > 0, names: snapshot.length, lastRefresh, ageMs: lastRefresh ? Date.now() - lastRefresh : null, network: NETWORK_NAME, price: priceInfo ? { factorBps: priceInfo.factorBps, outPoint: `${priceInfo.outPoint.txHash}:${priceInfo.outPoint.index}` } : null, archive: archive.stats(), quantum: quantum.stats(), sealed: sealed.stats(), disputes: disputes.stats(), domain: domainProofs.stats(), lock: { ok: lockWatch.ok(), watching: lockWatch.list() }, wallet: { ok: walletWatch.ok(), watching: walletWatch.list() }, refresh: { readTo: liveNames.ready ? liveNames.readTo : null, lastFull: liveNames.fullAt ? new Date(liveNames.fullAt).toISOString() : null, drift: liveNames.drift } },
+      body: { ok: lastRefresh > 0, names: snapshot.length, lastRefresh, ageMs: lastRefresh ? Date.now() - lastRefresh : null, network: NETWORK_NAME, price: priceInfo ? { factorBps: priceInfo.factorBps, outPoint: `${priceInfo.outPoint.txHash}:${priceInfo.outPoint.index}` } : null, archive: archive.stats(), quantum: quantum.stats(), sealed: sealed.stats(), disputes: disputes.stats(), domain: domainProofs.stats(), lock: { ok: lockWatch.ok(), watching: lockWatch.list() }, wallet: { ok: walletWatch.ok(), watching: walletWatch.list() }, refresh: { ok: refreshOk(), readTo: liveNames.ready ? liveNames.readTo : null, lastFull: liveNames.fullAt ? new Date(liveNames.fullAt).toISOString() : null, drift: liveNames.drift } },
     }
   }
   if (seg.length === 1 && seg[0] === 'names') {

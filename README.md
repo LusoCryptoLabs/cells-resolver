@@ -68,6 +68,7 @@ Everything is an environment variable, all optional:
 | `REFRESH_TIMEOUT_MS` | `30000` | give up on a refresh that hangs |
 | `RECONCILE_MS` | `600000` | how often every name is read again in full, as a check on the reads between; `/health` reports what it found under `refresh.drift` |
 | `FULL_TIMEOUT_MS` | `300000` | give up on a full read that hangs |
+| `STALE_MS` | `300000` | after this long without bringing the names up to date, `refresh.ok` in `/health` is false: one boolean for a monitor to watch |
 | `RATE_MAX` | `120` | requests per window per address |
 | `RATE_WINDOW_MS` | `60000` | |
 | `PRIMARY_TTL_MS` | `60000` | how long a reverse lookup is cached |

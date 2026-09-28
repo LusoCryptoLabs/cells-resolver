@@ -10,7 +10,7 @@ export const DEPLOYMENT = {
   account: {
     codeHash: '0xd96cee56727a2bb9a21408c154d278df5095fb4b4dcfd50516156424479bfe54',
     hashType: 'type',
-    dep: { txHash: '0xe9122f59d58625f8040926606cfb6e244ca557e5f83fed7cc1e6dea6b81804fc', index: 0, depType: 'code' },
+    dep: { txHash: '0x3072417e797a39a6ead341947dae3350b47a1b7d6571b326d3d7f8fe7677bf0b', index: 0, depType: 'code' },
   },
   lock: {
     codeHash: '0x9f0f0ba142b58cba2fe047546cfd8481d5b1769437cd3533e6458b21b61871ab',
@@ -21,7 +21,7 @@ export const DEPLOYMENT = {
   sale: {
     codeHash: '0x086c8f4e9d4272e3dfbaca399792f730e6604591e87931ee6d67047a3c900879',
     hashType: 'type',
-    dep: { txHash: '0x192db7b607f331ba09883f74e646fa7f983a7b0682d3e8dcc472599114d4bbaf', index: 0, depType: 'code' },
+    dep: { txHash: '0x020f7f9e5607a8e7d1e94d4c1f3d5c52c204d2f53fb097f43ce7f524d2edcabb', index: 0, depType: 'code' },
   },
   price: {
     codeHash: '0x97bf5f760cf72f918f13704d7184933b79d4ddc1fd85075762373e531152d4f9',

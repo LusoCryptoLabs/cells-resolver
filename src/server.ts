@@ -273,9 +273,9 @@ const HASHES: Record<string, Record<string, string>> = {
     'price-cell-type': '0x238e74e1d2d5bf8f06f9f4b0bb352c2addd531351a45cfeddf3ff5f6f5662342',
   },
   mainnet: {
-    'account-cell-type': '0xf86bdba9ff22b5018dcb90a22cdb3720cd5ea8868ab94959ac8146a6789aae30',
+    'account-cell-type': '0x99ea60a4369ed3d596338b66d6818710a1d047758f478dd854dd814b786aa088',
     'account-lock': '0xa46c19f2262abc0d0db0de3952b7477792b36b392645e0f60e74637ae3e3f13b',
-    'sale-lock': '0xf1160f64a82e3509211b2903fc54f9f15cbdc4758d058f107608d30727072a93',
+    'sale-lock': '0x57cdfaa46bc62012315f7c64719f01b43accb66bfc091183a751d59309da3068',
     'price-cell-type': '0x238e74e1d2d5bf8f06f9f4b0bb352c2addd531351a45cfeddf3ff5f6f5662342',
   },
 }

@@ -15,12 +15,20 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            sdk/package-lock.json
+            services/gateway/package-lock.json
       - run: npm ci
+        working-directory: sdk
+      - run: npm ci
+        working-directory: services/gateway
       - run: npm run typecheck
+        working-directory: services/gateway
       - run: npm test
+        working-directory: services/gateway
 
   image:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: docker build -t cells-resolver .
+      - run: docker build -f services/gateway/Dockerfile -t cells-resolver .

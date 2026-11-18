@@ -1,9 +1,9 @@
 # cells-resolver
 
 The HTTP read API for `.cell` names on Nervos CKB, as it runs at
-[cellula.id/api](https://cellula.id/api) and
-[testnet.cellula.id/api](https://testnet.cellula.id/api). One `fetch` instead of a chain
-read, CORS open, no key.
+[cellula.id/api](https://cellula.id/api).
+[testnet.cellula.id/api](https://testnet.cellula.id/api) runs the same service, usually a
+few changes ahead. One `fetch` instead of a chain read, CORS open, no key.
 
 It is a cache in front of the chain. It keeps a snapshot of every live name in memory,
 rebuilds it every fifteen seconds from a public CKB node, and answers from that. The chain
@@ -38,17 +38,19 @@ money, read the cell.
 ## Run your own
 
 A second instance anywhere is a complete instance: there is no database and nothing to
-sync. Node 24 or later.
+sync. Node 24 or later. `sdk/` is the source of [cellula-sdk](https://www.npmjs.com/package/cellula-sdk)
+the service runs on, read as it is with no build step; `services/gateway/` is the service.
 
 ```sh
-npm ci
+(cd sdk && npm ci)
+cd services/gateway && npm ci
 CKB_NETWORK=mainnet node src/server.ts
 ```
 
-Or with Docker:
+Or with Docker, from the repository root:
 
 ```sh
-docker build -t cells-resolver .
+docker build -f services/gateway/Dockerfile -t cells-resolver .
 docker run -e CKB_NETWORK=mainnet -p 8787:8787 -v cells-data:/app/data cells-resolver
 curl localhost:8787/health
 ```
@@ -81,9 +83,14 @@ Everything is an environment variable, all optional:
 | `GATEWAY_DOMAIN` | empty | the domain names get a page and a Lightning Address under, `<name>.<domain>`; empty disables it |
 | `SITE_DOMAIN` | empty | the separate host a name's own website answers on; empty disables sites |
 | `APP_URL` | `https://testnet.cellula.id` | where links back to the app point |
+| `DEEDS_KEY` | unset | the key that co-signs deed transactions (`POST /deed/cosign`); it holds no CKB, and unset that route answers `503` |
+| `COUNTS_PATH` | `$DATA_DIR/counts.json` | anonymous counts of pages served |
+| `STATEMENTS_DIR` | `$DATA_DIR/statements` | signed statements behind short links |
+| `MEALS_FROM` | block 22,544,700 on testnet, unset on mainnet | the first block the meals index reads |
+| `MEALS_PATH` | `/app/data/meals-v3.json` | the meals index |
 | `SELFTEST` | unset | `1` exercises the routes in-process and exits |
 
-`src/deployment.testnet.ts` and `src/deployment.mainnet.ts` are the live namespaces: the
+`services/gateway/src/deployment.testnet.ts` and `deployment.mainnet.ts` are the live namespaces: the
 type scripts and code cells the service reads. They are the same values
 [TRUST.md](https://github.com/LusoCryptoLabs/cells-contracts/blob/main/docs/TRUST.md)
 publishes for the contracts.
@@ -140,6 +147,8 @@ where from:
 ## Development
 
 ```sh
+(cd sdk && npm ci)
+cd services/gateway
 npm ci
 npm run typecheck
 npm test
@@ -150,8 +159,8 @@ OpenAPI document against the handler, primary-name rules, the wallet fingerprint
 proofs, counts. `SELFTEST=1 node src/server.ts` runs the routes against the live test
 network and exits.
 
-This is the service as deployed. It is developed alongside the app and the SDK, and
-changes land here when they land on the hosted instances.
+This is the service as deployed on mainnet: `sdk/` and `services/gateway/` are the same
+files the hosted image is built from, and they land here when they land on cellula.id.
 
 ## Related
 

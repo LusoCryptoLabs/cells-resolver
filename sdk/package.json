@@ -1,0 +1,59 @@
+{
+  "name": "cellula-sdk",
+  "version": "0.2.1",
+  "type": "module",
+  "description": "TypeScript client for the Cells naming protocol on Nervos CKB",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "resolve": "node examples/resolve.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.src.json",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@noble/post-quantum": "^0.7.1",
+    "@scure/bip39": "^2.4.0"
+  },
+  "homepage": "https://cellula.id/developers",
+  "keywords": [
+    "nervos",
+    "ckb",
+    "naming",
+    "name-resolution",
+    "cell",
+    "web3",
+    "blockchain",
+    "identity",
+    "sdk"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "@ckb-ccc/core": ">=1.19.1 <2",
+    "@ckb-ccc/spore": ">=1.6.9 <2"
+  },
+  "devDependencies": {
+    "@ckb-ccc/core": "1.19.1",
+    "@ckb-ccc/spore": "1.6.9",
+    "ccc-1-23": "npm:@ckb-ccc/core@1.23.0",
+    "typescript": "^5.9.3"
+  }
+}

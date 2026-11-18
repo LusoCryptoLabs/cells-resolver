@@ -1,0 +1,22 @@
+{
+  "// paths": "The image installs one copy of @ckb-ccc/core, this service's, and copies sdk/src in beside it without its node_modules, so at runtime the SDK and this service share it. A developer checkout has two copies, and without this mapping tsc types the same class twice and rejects every value passed across the seam. The mapping makes the check see what production sees. If it ever stops matching the Dockerfile, the check is lying.",
+  "// lib": "DOM is in lib for the SDK, not for this service: the SDK runs in a browser too and names WebCrypto types (SubtleCrypto, CryptoKey, BufferSource) that only lib.dom declares. Without it a type check of this service fails inside sdk/src and says nothing about the service itself.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@ckb-ccc/core": ["./node_modules/@ckb-ccc/core"],
+      "@ckb-ccc/core/*": ["./node_modules/@ckb-ccc/core/*"]
+    }
+  },
+  "include": ["src", "test"]
+}
